@@ -1,0 +1,14 @@
+# FastAPI and ASGI adapter
+fastapi>=0.115.6
+mangum>=0.18.1
+pydantic>=2.10.3
+pydantic[email]>=2.10.3
+
+# AWS SDK and Lambda Powertools
+boto3>=1.35.78
+aws-lambda-powertools>=3.3.0
+
+# Additional utilities
+uvicorn>=0.34.0
+python-dateutil>=2.9.0
+

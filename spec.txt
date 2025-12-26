@@ -1,0 +1,198 @@
+```markdown
+# Project Prompt: Train Booking REST API with AWS Bedrock Agent
+
+## Project Overview
+Develop a serverless Python train booking system hosted entirely on AWS with minimal infrastructure. The system should expose a REST API via AWS Lambda and API Gateway, use an in-memory database, and integrate with an AWS Bedrock agent for conversational booking management.
+
+## Architecture Components
+
+### Core Infrastructure
+- **AWS Lambda**: Host the FastAPI application as a containerized function (supports up to 10GB images)
+- **API Gateway**: Use HTTP API (v2) for cost-effective routing and faster performance compared to REST API
+- **Amazon Bedrock Agent**: Orchestrate conversational interactions and invoke Lambda functions through action groups
+- **Mangum**: ASGI adapter to bridge FastAPI and AWS Lambda's event structure
+- **Docker & Amazon ECR**: Package and store the Lambda container image
+
+### Deployment
+- **AWS CDK (Python)**: Infrastructure as Code for deploying all components including Bedrock agent, Lambda functions, and API Gateway
+
+## REST API Requirements
+
+### Endpoints to implement
+- `GET /trains` - Search available trains by route and date
+- `POST /bookings` - Create a new train booking
+- `GET /bookings/{booking_id}` - Retrieve booking status
+- `DELETE /bookings/{booking_id}` - Cancel a booking
+- `GET /health` - Health check endpoint
+
+### Data Model (In-Memory)
+```
+# Store in Python dictionaries/lists
+trains = [
+    {
+        "train_number": "T101",
+        "name": "Express 2025",
+        "route": {"from": "Paris", "to": "Lyon"},
+        "departure_time": "08:00",
+        "available_seats": 50
+    }
+]
+
+bookings = [
+    {
+        "booking_id": "BK12345",
+        "train_number": "T101",
+        "passenger_name": "string",
+        "email": "string",
+        "journey_date": "2025-12-27",
+        "seat_number": "A12",
+        "status": "confirmed"
+    }
+]
+```
+
+## Bedrock Agent Configuration
+
+### Agent Setup
+- **Foundation Model**: Use Claude 3 Sonnet or Claude 3.5 Sonnet for orchestration
+- **Instructions**: "You are a train booking assistant. Help users search for trains, make bookings, check booking status, and cancel reservations. Always confirm booking details before finalizing."
+
+### Action Group Definition
+Create an action group with Lambda executor that defines the following actions:
+- `searchTrains` - Parameters: origin, destination, date
+- `createBooking` - Parameters: train_number, passenger_name, email, journey_date
+- `getBookingStatus` - Parameters: booking_id
+- `cancelBooking` - Parameters: booking_id
+
+### Lambda Function for Action Group
+```
+# Use AWS Powertools for Python to simplify event handling
+from aws_lambda_powertools.event_handler import BedrockAgentResolver
+
+app = BedrockAgentResolver()
+
+@app.get("/searchTrains")
+def search_trains(origin: str, destination: str, date: str):
+    # Call REST API or directly access in-memory data
+    return {"trains": [...]}
+```
+
+## Technical Implementation Details
+
+### FastAPI Application Structure
+```
+train-booking-api/
+├── app/
+│   ├── __init__.py
+│   ├── main.py              # FastAPI app with Mangum adapter
+│   ├── models.py            # Pydantic models for validation
+│   ├── database.py          # In-memory data store
+│   └── routers/
+│       ├── trains.py        # Train search endpoints
+│       └── bookings.py      # Booking CRUD endpoints
+├── bedrock_agent/
+│   ├── lambda_handler.py    # Action group Lambda handler
+│   └── openapi_schema.json  # API schema for action group
+├── infrastructure/
+│   ├── app.py               # CDK app entry point
+│   └── stacks/
+│       ├── api_stack.py     # Lambda + API Gateway
+│       └── agent_stack.py   # Bedrock agent resources
+├── Dockerfile
+├── requirements.txt
+└── README.md
+```
+
+### Key Dependencies (requirements.txt)
+```
+fastapi>=0.104.0
+mangum>=0.17.0
+pydantic>=2.0.0
+boto3>=1.28.0
+aws-lambda-powertools>=2.30.0
+```
+
+### Docker Configuration
+```
+FROM public.ecr.aws/lambda/python:3.12
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY app/ ${LAMBDA_TASK_ROOT}/app/
+CMD ["app.main.handler"]
+```
+
+### Mangum Adapter in main.py
+```
+from fastapi import FastAPI
+from mangum import Mangum
+
+app = FastAPI()
+# ... define routes ...
+
+handler = Mangum(app, lifespan="off")
+```
+
+## IAM Permissions Required
+
+### Lambda Execution Role
+- Basic Lambda execution permissions
+- No additional permissions needed (using in-memory database)
+
+### Bedrock Agent Service Role
+- `bedrock:InvokeModel` - To invoke foundation models
+- `lambda:InvokeFunction` - To call action group Lambda
+
+### Action Group Lambda Role
+- Basic Lambda execution permissions
+- Optional: API Gateway invoke permissions if calling the REST API
+
+## CDK Deployment Stack
+
+### Key CDK Constructs
+```
+# API Stack
+lambda_function = aws_lambda.DockerImageFunction(...)
+api_gateway = aws_apigatewayv2.HttpApi(...)
+
+# Agent Stack
+agent_role = aws_iam.Role(...)
+bedrock_agent = bedrock.CfnAgent(
+    agent_name="TrainBookingAgent",
+    foundation_model="anthropic.claude-3-sonnet-20240229-v1:0",
+    instruction="...",
+    agent_resource_role_arn=agent_role.role_arn
+)
+action_group = bedrock.CfnAgentActionGroup(...)
+```
+
+## Testing Strategy
+
+### REST API Testing
+- Use pytest with FastAPI TestClient for unit tests
+- Deploy to AWS and test via API Gateway endpoint URL
+- Test timeout handling (Lambda max 15 minutes, API Gateway HTTP API max 29 seconds)
+
+### Bedrock Agent Testing
+Test through Bedrock Console with sample prompts:
+- "Show me trains from Paris to Lyon on December 27th"
+- "Book a ticket for John Doe on train T101"
+- "What's the status of booking BK12345?"
+- "Cancel my booking BK12345"
+
+## Deployment Steps
+
+1. Build and push Docker image to ECR
+2. Deploy CDK stack: `cdk deploy --all`
+3. Create and prepare Bedrock agent
+4. Test REST API endpoints via API Gateway URL
+5. Test Bedrock agent interactions through console or SDK
+
+## Cost Optimization Notes
+- Lambda charged per invocation and execution time
+- API Gateway HTTP API is cheaper than REST API
+- Bedrock charged per token for model invocations
+- No database costs with in-memory storage
+- Suitable for development and low-traffic production workloads
+
+This architecture provides infinite scaling, no server maintenance, minimal downtime, and cost-effective operation for a train booking system.
+```

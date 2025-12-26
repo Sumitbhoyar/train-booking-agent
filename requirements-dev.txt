@@ -1,0 +1,11 @@
+# Testing dependencies
+pytest>=8.3.4
+httpx>=0.28.1
+pytest-cov>=6.0.0
+
+# Development dependencies
+black>=24.10.0
+flake8>=7.1.1
+mypy>=1.13.0
+ruff>=0.8.4
+

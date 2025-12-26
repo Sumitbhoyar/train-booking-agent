@@ -1,0 +1,282 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Train Booking Action Group API",
+    "description": "API schema for Bedrock Agent action group to manage train bookings",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/searchTrains": {
+      "get": {
+        "summary": "Search for available trains",
+        "description": "Search for trains by origin, destination, and date",
+        "operationId": "searchTrains",
+        "parameters": [
+          {
+            "name": "origin",
+            "in": "query",
+            "description": "Origin station (e.g., Paris, Lyon, Marseille)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "destination",
+            "in": "query",
+            "description": "Destination station (e.g., Paris, Lyon, Marseille)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "Journey date in YYYY-MM-DD format",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of available trains",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "trains": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Train"
+                      }
+                    },
+                    "count": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/createBooking": {
+      "post": {
+        "summary": "Create a new booking",
+        "description": "Create a booking for a passenger on a specific train",
+        "operationId": "createBooking",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["train_number", "passenger_name", "email", "journey_date"],
+                "properties": {
+                  "train_number": {
+                    "type": "string",
+                    "description": "Train number to book"
+                  },
+                  "passenger_name": {
+                    "type": "string",
+                    "description": "Name of the passenger"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Passenger email address"
+                  },
+                  "journey_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Journey date in YYYY-MM-DD format"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Booking created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "booking": {
+                      "$ref": "#/components/schemas/Booking"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/getBookingStatus": {
+      "get": {
+        "summary": "Get booking status",
+        "description": "Retrieve the status and details of a booking",
+        "operationId": "getBookingStatus",
+        "parameters": [
+          {
+            "name": "booking_id",
+            "in": "query",
+            "description": "Booking ID to retrieve",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Booking details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "booking": {
+                      "$ref": "#/components/schemas/Booking"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cancelBooking": {
+      "delete": {
+        "summary": "Cancel a booking",
+        "description": "Cancel an existing booking and restore seat availability",
+        "operationId": "cancelBooking",
+        "parameters": [
+          {
+            "name": "booking_id",
+            "in": "query",
+            "description": "Booking ID to cancel",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Booking cancelled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "booking_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Train": {
+        "type": "object",
+        "properties": {
+          "train_number": {
+            "type": "string",
+            "description": "Unique train identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Train name"
+          },
+          "route": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "description": "Origin station"
+              },
+              "to": {
+                "type": "string",
+                "description": "Destination station"
+              }
+            }
+          },
+          "departure_time": {
+            "type": "string",
+            "description": "Departure time (HH:MM format)"
+          },
+          "available_seats": {
+            "type": "integer",
+            "description": "Number of available seats"
+          }
+        }
+      },
+      "Booking": {
+        "type": "object",
+        "properties": {
+          "booking_id": {
+            "type": "string",
+            "description": "Unique booking identifier"
+          },
+          "train_number": {
+            "type": "string",
+            "description": "Train number"
+          },
+          "passenger_name": {
+            "type": "string",
+            "description": "Passenger name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Passenger email"
+          },
+          "journey_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Journey date"
+          },
+          "seat_number": {
+            "type": "string",
+            "description": "Assigned seat number"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["confirmed", "cancelled"],
+            "description": "Booking status"
+          }
+        }
+      }
+    }
+  }
+}
+

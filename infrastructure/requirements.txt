@@ -1,0 +1,4 @@
+# AWS CDK Infrastructure dependencies
+aws-cdk-lib>=2.172.0
+constructs>=10.4.2
+
