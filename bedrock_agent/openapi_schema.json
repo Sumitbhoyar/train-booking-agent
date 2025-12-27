@@ -2,48 +2,56 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Train Booking Action Group API",
-    "description": "API schema for Bedrock Agent action group to manage train bookings",
-    "version": "1.0.0"
+    "description": "OpenAPI schema for AWS Bedrock Agent action group to manage train bookings with AI. Supports train search, booking management, and PDF generation as tool use.",
+    "version": "2.0.0",
+    "contact": {
+      "name": "Train Booking API",
+      "email": "support@trainbooking.com"
+    }
   },
   "paths": {
     "/searchTrains": {
       "get": {
         "summary": "Search for available trains",
-        "description": "Search for trains by origin, destination, and date",
+        "description": "Search for trains by origin station, destination station, and travel date. Returns list of available trains with seat availability.",
         "operationId": "searchTrains",
+        "tags": ["Train Search"],
         "parameters": [
           {
             "name": "origin",
             "in": "query",
-            "description": "Origin station (e.g., Paris, Lyon, Marseille)",
+            "description": "Origin station name (e.g., Paris, Lyon, Marseille, Nice). Case-insensitive.",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "example": "Paris"
             }
           },
           {
             "name": "destination",
             "in": "query",
-            "description": "Destination station (e.g., Paris, Lyon, Marseille)",
+            "description": "Destination station name (e.g., Paris, Lyon, Marseille, Nice). Case-insensitive.",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "example": "Lyon"
             }
           },
           {
             "name": "date",
             "in": "query",
-            "description": "Journey date in YYYY-MM-DD format",
+            "description": "Journey date in YYYY-MM-DD format (e.g., 2025-12-27)",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "date"
+              "format": "date",
+              "example": "2025-12-27"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "List of available trains",
+            "description": "List of available trains matching the search criteria",
             "content": {
               "application/json": {
                 "schema": {
@@ -51,14 +59,36 @@
                   "properties": {
                     "trains": {
                       "type": "array",
+                      "description": "Array of available trains",
                       "items": {
                         "$ref": "#/components/schemas/Train"
                       }
                     },
                     "count": {
-                      "type": "integer"
+                      "type": "integer",
+                      "description": "Number of trains found",
+                      "example": 2
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Optional message if no trains found"
                     }
                   }
+                },
+                "example": {
+                  "trains": [
+                    {
+                      "train_number": "T101",
+                      "name": "Express 2025",
+                      "route": {
+                        "from": "Paris",
+                        "to": "Lyon"
+                      },
+                      "departure_time": "08:00",
+                      "available_seats": 50
+                    }
+                  ],
+                  "count": 1
                 }
               }
             }
@@ -68,11 +98,13 @@
     },
     "/createBooking": {
       "post": {
-        "summary": "Create a new booking",
-        "description": "Create a booking for a passenger on a specific train",
+        "summary": "Create a new train booking",
+        "description": "Create a booking for a passenger on a specific train. Automatically assigns a seat and generates a booking ID. Returns booking confirmation with seat assignment.",
         "operationId": "createBooking",
+        "tags": ["Booking Management"],
         "requestBody": {
           "required": true,
+          "description": "Booking details including train, passenger information, and journey date",
           "content": {
             "application/json": {
               "schema": {
@@ -81,21 +113,25 @@
                 "properties": {
                   "train_number": {
                     "type": "string",
-                    "description": "Train number to book"
+                    "description": "Train number to book (e.g., T101, T102)",
+                    "example": "T101"
                   },
                   "passenger_name": {
                     "type": "string",
-                    "description": "Name of the passenger"
+                    "description": "Full name of the passenger",
+                    "example": "John Doe"
                   },
                   "email": {
                     "type": "string",
                     "format": "email",
-                    "description": "Passenger email address"
+                    "description": "Passenger email address for confirmation",
+                    "example": "john.doe@example.com"
                   },
                   "journey_date": {
                     "type": "string",
                     "format": "date",
-                    "description": "Journey date in YYYY-MM-DD format"
+                    "description": "Journey date in YYYY-MM-DD format",
+                    "example": "2025-12-27"
                   }
                 }
               }
@@ -104,7 +140,7 @@
         },
         "responses": {
           "200": {
-            "description": "Booking created successfully",
+            "description": "Booking created successfully with seat assignment",
             "content": {
               "application/json": {
                 "schema": {
@@ -114,7 +150,53 @@
                       "$ref": "#/components/schemas/Booking"
                     },
                     "message": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Confirmation message",
+                      "example": "Booking confirmed! Your booking ID is BK12345678. Seat number: A12"
+                    }
+                  }
+                },
+                "example": {
+                  "booking": {
+                    "booking_id": "BK12345678",
+                    "train_number": "T101",
+                    "passenger_name": "John Doe",
+                    "email": "john.doe@example.com",
+                    "journey_date": "2025-12-27",
+                    "seat_number": "A12",
+                    "status": "confirmed"
+                  },
+                  "message": "Booking confirmed! Your booking ID is BK12345678. Seat number: A12"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - validation error or no seats available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "No seats available on train T101"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Train not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Train T999 not found"
                     }
                   }
                 }
@@ -126,23 +208,26 @@
     },
     "/getBookingStatus": {
       "get": {
-        "summary": "Get booking status",
-        "description": "Retrieve the status and details of a booking",
+        "summary": "Get booking status and details",
+        "description": "Retrieve the complete details and current status of a booking using the booking ID",
         "operationId": "getBookingStatus",
+        "tags": ["Booking Management"],
         "parameters": [
           {
             "name": "booking_id",
             "in": "query",
-            "description": "Booking ID to retrieve",
+            "description": "Booking ID to retrieve (format: BK followed by 8 characters, e.g., BK12345678)",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^BK[A-Z0-9]{8}$",
+              "example": "BK12345678"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Booking details",
+            "description": "Booking details retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -152,7 +237,25 @@
                       "$ref": "#/components/schemas/Booking"
                     },
                     "message": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Status message",
+                      "example": "Booking BK12345678 is confirmed"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Booking not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Booking BK12345678 not found"
                     }
                   }
                 }
@@ -164,17 +267,20 @@
     },
     "/cancelBooking": {
       "delete": {
-        "summary": "Cancel a booking",
-        "description": "Cancel an existing booking and restore seat availability",
+        "summary": "Cancel an existing booking",
+        "description": "Cancel an existing booking and automatically restore seat availability on the train. Cannot cancel already cancelled bookings.",
         "operationId": "cancelBooking",
+        "tags": ["Booking Management"],
         "parameters": [
           {
             "name": "booking_id",
             "in": "query",
-            "description": "Booking ID to cancel",
+            "description": "Booking ID to cancel (format: BK followed by 8 characters)",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^BK[A-Z0-9]{8}$",
+              "example": "BK12345678"
             }
           }
         ],
@@ -187,13 +293,163 @@
                   "type": "object",
                   "properties": {
                     "booking_id": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Cancelled booking ID",
+                      "example": "BK12345678"
                     },
                     "status": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": ["cancelled"],
+                      "description": "New booking status",
+                      "example": "cancelled"
                     },
                     "message": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Cancellation confirmation message",
+                      "example": "Booking BK12345678 has been successfully cancelled"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Booking not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Booking BK12345678 not found"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exportBookingPDF": {
+      "post": {
+        "summary": "Generate booking confirmation PDF (Tool Use)",
+        "description": "TOOL USE: Generate a professional PDF booking confirmation and return it as base64-encoded content. This tool generates the PDF directly in the Lambda function using ReportLab and returns the complete PDF file encoded in base64 format. The PDF includes booking details, train information, passenger details, seat assignment, and terms & conditions. This is a pure tool use operation, not a REST API endpoint.",
+        "operationId": "exportBookingPDF",
+        "tags": ["PDF Generation (Tool Use)"],
+        "requestBody": {
+          "required": true,
+          "description": "Booking ID to generate PDF for",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["booking_id"],
+                "properties": {
+                  "booking_id": {
+                    "type": "string",
+                    "description": "Booking ID to generate PDF for (format: BK followed by 8 characters)",
+                    "pattern": "^BK[A-Z0-9]{8}$",
+                    "example": "BK12345678"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "PDF generated successfully with base64-encoded content. The agent can save, display, or provide this PDF to the user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["booking_id", "pdf_generated", "pdf_content"],
+                  "properties": {
+                    "booking_id": {
+                      "type": "string",
+                      "description": "The booking ID that was exported",
+                      "example": "BK12345678"
+                    },
+                    "pdf_generated": {
+                      "type": "boolean",
+                      "description": "Whether PDF generation was successful",
+                      "example": true
+                    },
+                    "pdf_content": {
+                      "type": "string",
+                      "description": "Base64-encoded PDF file content. Decode this to get the binary PDF file. The PDF is professionally formatted with booking details, train information, passenger details, seat assignment, and terms.",
+                      "example": "JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4K..."
+                    },
+                    "file_size_kb": {
+                      "type": "number",
+                      "description": "PDF file size in kilobytes (typically 15-25 KB)",
+                      "example": 18.5
+                    },
+                    "filename": {
+                      "type": "string",
+                      "description": "Suggested filename for saving the PDF",
+                      "example": "booking_BK12345678.pdf"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Human-readable confirmation message with booking summary",
+                      "example": "PDF generated successfully for John Doe's booking on train T101. The PDF is 18.5KB and contains complete booking details including seat A12."
+                    },
+                    "instructions": {
+                      "type": "string",
+                      "description": "Instructions for using the base64-encoded PDF content",
+                      "example": "The PDF content is base64-encoded. You can save it or provide it to the user. To save: decode the base64 string and write to a .pdf file."
+                    }
+                  }
+                },
+                "example": {
+                  "booking_id": "BK12345678",
+                  "pdf_generated": true,
+                  "pdf_content": "JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4K...",
+                  "file_size_kb": 18.5,
+                  "filename": "booking_BK12345678.pdf",
+                  "message": "PDF generated successfully for John Doe's booking on train T101. The PDF is 18.5KB and contains complete booking details including seat A12.",
+                  "instructions": "The PDF content is base64-encoded. Decode and save as .pdf file."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Booking not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Booking BK12345678 not found"
+                    },
+                    "booking_id": {
+                      "type": "string",
+                      "example": "BK12345678"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "PDF generation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Failed to generate PDF: Internal error"
+                    },
+                    "booking_id": {
+                      "type": "string",
+                      "example": "BK12345678"
                     }
                   }
                 }
@@ -208,75 +464,111 @@
     "schemas": {
       "Train": {
         "type": "object",
+        "description": "Train information including route, schedule, and availability",
+        "required": ["train_number", "name", "route", "departure_time", "available_seats"],
         "properties": {
           "train_number": {
             "type": "string",
-            "description": "Unique train identifier"
+            "description": "Unique train identifier (e.g., T101, T102)",
+            "example": "T101"
           },
           "name": {
             "type": "string",
-            "description": "Train name"
+            "description": "Display name of the train",
+            "example": "Express 2025"
           },
           "route": {
             "type": "object",
+            "description": "Train route with origin and destination",
+            "required": ["from", "to"],
             "properties": {
               "from": {
                 "type": "string",
-                "description": "Origin station"
+                "description": "Origin station name",
+                "example": "Paris"
               },
               "to": {
                 "type": "string",
-                "description": "Destination station"
+                "description": "Destination station name",
+                "example": "Lyon"
               }
             }
           },
           "departure_time": {
             "type": "string",
-            "description": "Departure time (HH:MM format)"
+            "description": "Departure time in HH:MM format (24-hour)",
+            "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
+            "example": "08:00"
           },
           "available_seats": {
             "type": "integer",
-            "description": "Number of available seats"
+            "description": "Number of available seats on this train",
+            "minimum": 0,
+            "example": 50
           }
         }
       },
       "Booking": {
         "type": "object",
+        "description": "Complete booking information with passenger details and status",
+        "required": ["booking_id", "train_number", "passenger_name", "email", "journey_date", "seat_number", "status"],
         "properties": {
           "booking_id": {
             "type": "string",
-            "description": "Unique booking identifier"
+            "description": "Unique booking identifier (format: BK + 8 alphanumeric characters)",
+            "pattern": "^BK[A-Z0-9]{8}$",
+            "example": "BK12345678"
           },
           "train_number": {
             "type": "string",
-            "description": "Train number"
+            "description": "Booked train number",
+            "example": "T101"
           },
           "passenger_name": {
             "type": "string",
-            "description": "Passenger name"
+            "description": "Full name of the passenger",
+            "example": "John Doe"
           },
           "email": {
             "type": "string",
             "format": "email",
-            "description": "Passenger email"
+            "description": "Passenger email address",
+            "example": "john.doe@example.com"
           },
           "journey_date": {
             "type": "string",
             "format": "date",
-            "description": "Journey date"
+            "description": "Journey date in YYYY-MM-DD format",
+            "example": "2025-12-27"
           },
           "seat_number": {
             "type": "string",
-            "description": "Assigned seat number"
+            "description": "Assigned seat number (format: Letter + Number, e.g., A12)",
+            "pattern": "^[A-Z][0-9]+$",
+            "example": "A12"
           },
           "status": {
             "type": "string",
             "enum": ["confirmed", "cancelled"],
-            "description": "Booking status"
+            "description": "Current booking status (confirmed or cancelled)",
+            "example": "confirmed"
           }
         }
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "Train Search",
+      "description": "Operations for searching available trains"
+    },
+    {
+      "name": "Booking Management",
+      "description": "Operations for creating, viewing, and cancelling bookings"
+    },
+    {
+      "name": "PDF Generation (Tool Use)",
+      "description": "Tool use for generating booking confirmation PDFs with base64-encoded content"
+    }
+  ]
 }
-

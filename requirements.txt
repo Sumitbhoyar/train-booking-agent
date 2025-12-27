@@ -12,3 +12,6 @@ aws-lambda-powertools>=3.3.0
 uvicorn>=0.34.0
 python-dateutil>=2.9.0
 
+# Note: PDF generation moved to Bedrock agent Lambda (tool use)
+# reportlab is no longer needed in the REST API Lambda
+

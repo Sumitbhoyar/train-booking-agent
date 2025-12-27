@@ -163,6 +163,65 @@ class TestDataValidation:
         assert response.status_code == 422
 
 
+class TestPDFExport:
+    """Test PDF export functionality"""
+    
+    def test_export_booking_pdf_success(self):
+        """Test exporting a booking as PDF"""
+        # First create a booking
+        booking_data = {
+            "train_number": "T101",
+            "passenger_name": "PDF Test User",
+            "email": "pdftest@example.com",
+            "journey_date": "2025-12-27"
+        }
+        create_response = client.post("/bookings", json=booking_data)
+        booking_id = create_response.json()["booking"]["booking_id"]
+        
+        # Then export as PDF
+        response = client.get(f"/bookings/{booking_id}/pdf")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/pdf"
+        assert "attachment" in response.headers.get("content-disposition", "")
+        assert booking_id in response.headers.get("content-disposition", "")
+        
+        # Check that PDF has content
+        pdf_content = response.content
+        assert len(pdf_content) > 0
+        assert pdf_content.startswith(b"%PDF")  # PDF magic number
+    
+    def test_export_cancelled_booking_pdf(self):
+        """Test exporting a cancelled booking as PDF"""
+        # Create and cancel a booking
+        booking_data = {
+            "train_number": "T102",
+            "passenger_name": "Cancelled PDF User",
+            "email": "cancelled@example.com",
+            "journey_date": "2025-12-28"
+        }
+        create_response = client.post("/bookings", json=booking_data)
+        booking_id = create_response.json()["booking"]["booking_id"]
+        
+        # Cancel it
+        client.delete(f"/bookings/{booking_id}")
+        
+        # Export as PDF
+        response = client.get(f"/bookings/{booking_id}/pdf")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/pdf"
+        assert "cancellation" in response.headers.get("content-disposition", "").lower()
+        
+        # Check PDF content
+        pdf_content = response.content
+        assert len(pdf_content) > 0
+        assert pdf_content.startswith(b"%PDF")
+    
+    def test_export_nonexistent_booking_pdf(self):
+        """Test exporting PDF for non-existent booking"""
+        response = client.get("/bookings/INVALID123/pdf")
+        assert response.status_code == 404
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 

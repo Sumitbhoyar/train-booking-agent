@@ -9,24 +9,25 @@ train-booking-api/
 │   ├── models.py                        # Pydantic models for validation
 │   ├── database.py                      # In-memory data store
 │   ├── config.py                        # Configuration management
+│   ├── pdf_generator.py                 # PDF generation utility
 │   └── routers/                         # API route handlers
 │       ├── __init__.py
 │       ├── trains.py                    # Train search endpoints
-│       └── bookings.py                  # Booking CRUD endpoints
+│       └── bookings.py                  # Booking CRUD + PDF export endpoints
 │
 ├── 📁 bedrock_agent/                    # AWS Bedrock Agent Integration
 │   ├── __init__.py
-│   ├── lambda_handler.py                # Action group Lambda with Powertools
-│   └── openapi_schema.json              # OpenAPI spec for Bedrock actions
+│   ├── lambda_handler.py                # Action group Lambda with Powertools 3.3.0
+│   └── openapi_schema.json              # OpenAPI spec for Bedrock actions (5 actions)
 │
 ├── 📁 infrastructure/                   # AWS CDK Infrastructure as Code
 │   ├── __init__.py
 │   ├── app.py                           # CDK app entry point
-│   ├── requirements.txt                 # CDK Python dependencies
+│   ├── requirements.txt                 # CDK Python dependencies (CDK 2.172.0)
 │   └── stacks/                          # CDK stack definitions
 │       ├── __init__.py
 │       ├── api_stack.py                 # Lambda + API Gateway stack
-│       └── agent_stack.py               # Bedrock Agent stack
+│       └── agent_stack.py               # Bedrock Agent stack (Claude 3.5 v2)
 │
 ├── 📁 tests/                            # Unit and Integration Tests
 │   ├── __init__.py
@@ -59,12 +60,12 @@ train-booking-api/
 
 | Category | Count | Description |
 |----------|-------|-------------|
-| **Python Source Files** | 13 | Application, infrastructure, and test code |
+| **Python Source Files** | 15 | Application, infrastructure, and test code |
 | **Configuration Files** | 6 | Docker, CDK, Python project configs |
-| **Documentation** | 5 | README, guides, architecture docs |
+| **Documentation** | 10 | README, guides, architecture, feature docs |
 | **Scripts** | 3 | Deployment automation (sh, ps1, Makefile) |
 | **Schema/Spec** | 2 | OpenAPI schema, project spec |
-| **Total** | **29 files** | Complete production-ready project |
+| **Total** | **36 files** | Complete production-ready project |
 
 ## 🎯 Key File Descriptions
 

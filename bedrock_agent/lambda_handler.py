@@ -1,11 +1,23 @@
-"""AWS Bedrock Agent Action Group Lambda Handler"""
+"""AWS Bedrock Agent Action Group Lambda Handler with PDF Generation"""
 import json
 import os
+import base64
 from datetime import datetime
 from typing import Dict, Any, List
+from io import BytesIO
+import uuid
+
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.event_handler import BedrockAgentResolver
 from aws_lambda_powertools.utilities.typing import LambdaContext
+
+# PDF generation imports
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.enums import TA_CENTER
 
 logger = Logger()
 app = BedrockAgentResolver()
@@ -51,6 +63,106 @@ trains_data = [
 
 bookings_data = []
 seat_counter = {}
+
+
+def generate_booking_pdf(booking: Dict, train: Dict) -> BytesIO:
+    """Generate a PDF for booking confirmation"""
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+    
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        name='CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#1a1a1a'),
+        spaceAfter=30,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
+    
+    status_style = ParagraphStyle(
+        name='Status',
+        parent=styles['Normal'],
+        fontSize=14,
+        textColor=colors.green if booking['status'] == 'confirmed' else colors.red,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
+    
+    elements = []
+    
+    # Title
+    elements.append(Paragraph("🚂 Train Booking Confirmation", title_style))
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Status
+    status_text = booking.get('status', 'unknown').upper()
+    elements.append(Paragraph(f"Status: {status_text}", status_style))
+    elements.append(Spacer(1, 0.4*inch))
+    
+    # Booking Information
+    elements.append(Paragraph("Booking Information", styles['Heading2']))
+    booking_data = [
+        ['Booking ID:', booking.get('booking_id', 'N/A')],
+        ['Passenger Name:', booking.get('passenger_name', 'N/A')],
+        ['Email:', booking.get('email', 'N/A')],
+        ['Journey Date:', booking.get('journey_date', 'N/A')],
+        ['Seat Number:', booking.get('seat_number', 'N/A')]
+    ]
+    
+    booking_table = Table(booking_data, colWidths=[2*inch, 4*inch])
+    booking_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#ecf0f1')),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#2c3e50')),
+        ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#bdc3c7'))
+    ]))
+    elements.append(booking_table)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Train Information
+    elements.append(Paragraph("Train Information", styles['Heading2']))
+    train_data = [
+        ['Train Number:', train.get('train_number', 'N/A')],
+        ['Train Name:', train.get('name', 'N/A')],
+        ['From:', train.get('route', {}).get('from', 'N/A')],
+        ['To:', train.get('route', {}).get('to', 'N/A')],
+        ['Departure Time:', train.get('departure_time', 'N/A')]
+    ]
+    
+    train_table = Table(train_data, colWidths=[2*inch, 4*inch])
+    train_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#ecf0f1')),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#2c3e50')),
+        ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#bdc3c7'))
+    ]))
+    elements.append(train_table)
+    elements.append(Spacer(1, 0.4*inch))
+    
+    # Footer
+    footer_text = f"Generated on {datetime.now().strftime('%B %d, %Y at %I:%M %p')}<br/>" \
+                 "Train Booking API - Powered by AWS"
+    footer_style = ParagraphStyle(name='Footer', parent=styles['Normal'], fontSize=9, 
+                                 textColor=colors.HexColor('#7f8c8d'), alignment=TA_CENTER)
+    elements.append(Paragraph(footer_text, footer_style))
+    
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
 
 
 @app.get("/searchTrains")
@@ -123,7 +235,6 @@ def create_booking(train_number: str, passenger_name: str,
         }
     
     # Generate booking ID
-    import uuid
     booking_id = f"BK{uuid.uuid4().hex[:8].upper()}"
     
     # Assign seat
@@ -225,6 +336,73 @@ def cancel_booking(booking_id: str) -> Dict[str, Any]:
     }
 
 
+@app.post("/exportBookingPDF")
+def export_booking_pdf(booking_id: str) -> Dict[str, Any]:
+    """
+    Export booking confirmation as PDF (Tool Use - generates and returns PDF).
+    
+    Args:
+        booking_id: Booking ID to export
+        
+    Returns:
+        Dictionary with base64-encoded PDF content
+    """
+    logger.info(f"Generating PDF for booking {booking_id}")
+    
+    # Check if booking exists
+    booking = None
+    for b in bookings_data:
+        if b["booking_id"] == booking_id:
+            booking = b
+            break
+    
+    if not booking:
+        return {
+            "error": f"Booking {booking_id} not found"
+        }
+    
+    # Get train details
+    train = None
+    for t in trains_data:
+        if t["train_number"] == booking["train_number"]:
+            train = t
+            break
+    
+    if not train:
+        return {
+            "error": f"Train information not found for booking {booking_id}"
+        }
+    
+    try:
+        # Generate PDF
+        pdf_buffer = generate_booking_pdf(booking, train)
+        pdf_bytes = pdf_buffer.getvalue()
+        
+        # Encode to base64
+        pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+        
+        # Calculate file size
+        file_size_kb = len(pdf_bytes) / 1024
+        
+        return {
+            "booking_id": booking_id,
+            "pdf_generated": True,
+            "pdf_content": pdf_base64,
+            "file_size_kb": round(file_size_kb, 2),
+            "filename": f"booking_{booking_id}.pdf",
+            "message": f"PDF generated successfully for {booking['passenger_name']}'s booking on train {booking['train_number']}. "
+                      f"The PDF is {file_size_kb:.1f}KB and contains complete booking details including seat {booking['seat_number']}.",
+            "instructions": "The PDF content is base64-encoded. You can save it or provide it to the user. "
+                          "To save: decode the base64 string and write to a .pdf file."
+        }
+    except Exception as e:
+        logger.error(f"Error generating PDF: {str(e)}")
+        return {
+            "error": f"Failed to generate PDF: {str(e)}",
+            "booking_id": booking_id
+        }
+
+
 @logger.inject_lambda_context
 def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, Any]:
     """
@@ -240,4 +418,3 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
     logger.info("Received event", extra={"event": event})
     
     return app.resolve(event, context)
-

@@ -48,14 +48,21 @@ class AgentStack(Stack):
             self,
             "ActionGroupFunction",
             function_name="train-booking-action-group",
-            description="Action group Lambda for Bedrock Agent",
+            description="Action group Lambda for Bedrock Agent with PDF generation",
             runtime=lambda_.Runtime.PYTHON_3_13,
             handler="lambda_handler.lambda_handler",
             code=lambda_.Code.from_asset(
-                os.path.join(os.path.dirname(__file__), "../../bedrock_agent")
+                os.path.join(os.path.dirname(__file__), "../../bedrock_agent"),
+                bundling={
+                    "image": lambda_.Runtime.PYTHON_3_13.bundling_image,
+                    "command": [
+                        "bash", "-c",
+                        "pip install -r requirements.txt -t /asset-output && cp -au . /asset-output"
+                    ]
+                }
             ),
             timeout=Duration.seconds(30),
-            memory_size=256,
+            memory_size=512,
             log_retention=logs.RetentionDays.ONE_WEEK,
             environment={
                 "LOG_LEVEL": "INFO"
@@ -77,9 +84,12 @@ class AgentStack(Stack):
 2. Creating new train bookings
 3. Checking the status of existing bookings
 4. Cancelling bookings
+5. Generating PDF booking confirmations
 
-Always be polite and confirm booking details before finalizing. When showing train options, present them clearly with train number, name, route, departure time, and available seats. For bookings, always confirm the passenger name, email, train details, and journey date before proceeding.""",
-            description="AI agent for train booking operations",
+Always be polite and confirm booking details before finalizing. When showing train options, present them clearly with train number, name, route, departure time, and available seats. For bookings, always confirm the passenger name, email, train details, and journey date before proceeding.
+
+When a user requests a PDF of their booking, use the exportBookingPDF tool which will generate the PDF directly and return it as base64-encoded content. Let the user know the PDF has been generated successfully.""",
+            description="AI agent for train booking operations with PDF generation",
             idle_session_ttl_in_seconds=600,
             auto_prepare=True
         )

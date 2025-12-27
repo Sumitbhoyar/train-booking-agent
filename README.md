@@ -1,14 +1,15 @@
 # Train Booking REST API with AWS Bedrock Agent
 
-A serverless train booking system built with FastAPI, AWS Lambda, API Gateway, and AWS Bedrock Agent for conversational booking management.
+A serverless train booking system built with FastAPI, AWS Lambda, API Gateway, and AWS Bedrock Agent for conversational booking management. Includes professional PDF export for booking confirmations.
 
 ## 🏗️ Architecture
 
-- **AWS Lambda**: Hosts the FastAPI application as a containerized function
+- **AWS Lambda**: Hosts the FastAPI application as a containerized function (Python 3.13)
 - **API Gateway**: HTTP API (v2) for REST endpoints
-- **Amazon Bedrock Agent**: Conversational AI interface using Claude 3 Sonnet
+- **Amazon Bedrock Agent**: Conversational AI interface using Claude 3.5 Sonnet v2
 - **AWS CDK**: Infrastructure as Code for deployment
 - **In-Memory Database**: Python dictionaries for demo purposes
+- **PDF Generation**: ReportLab for professional booking confirmations
 
 ## 📁 Project Structure
 
@@ -19,9 +20,11 @@ train-booking-api/
 │   ├── main.py              # FastAPI app with Mangum adapter
 │   ├── models.py            # Pydantic models
 │   ├── database.py          # In-memory data store
+│   ├── config.py            # Configuration management
+│   ├── pdf_generator.py     # PDF generation utility
 │   └── routers/
 │       ├── trains.py        # Train search endpoints
-│       └── bookings.py      # Booking CRUD endpoints
+│       └── bookings.py      # Booking CRUD + PDF export
 ├── bedrock_agent/
 │   ├── lambda_handler.py    # Action group Lambda handler
 │   └── openapi_schema.json  # API schema for action group
@@ -31,6 +34,8 @@ train-booking-api/
 │   └── stacks/
 │       ├── api_stack.py     # Lambda + API Gateway
 │       └── agent_stack.py   # Bedrock agent resources
+├── tests/
+│   └── test_api.py          # Comprehensive unit tests
 ├── Dockerfile
 ├── requirements.txt
 ├── cdk.json
@@ -53,17 +58,18 @@ train-booking-api/
 - `GET /health` - Health check endpoint
 - `GET /` - Root endpoint with API info
 
-## 🤖 Bedrock Agent Actions
+## 🤖 Bedrock Agent Actions (Tool Use)
 
 The Bedrock Agent supports conversational interactions for:
 - **searchTrains**: Find available trains by route and date
 - **createBooking**: Book a train ticket
 - **getBookingStatus**: Check booking details
 - **cancelBooking**: Cancel existing reservation
+- **exportBookingPDF**: **Tool Use** - Generate and return PDF as base64 content
 
 ## 📦 Prerequisites
 
-- Python 3.12+
+- Python 3.13+ (or Python 3.12)
 - AWS Account with appropriate permissions
 - AWS CLI configured
 - Docker installed
@@ -147,6 +153,8 @@ curl https://<api-url>/bookings/{booking_id}
 curl -X DELETE https://<api-url>/bookings/{booking_id}
 ```
 
+**Note**: PDF export is available through the Bedrock Agent as a tool use, not via REST API.
+
 ### Bedrock Agent Testing
 
 Test through AWS Console (Bedrock > Agents > Test):
@@ -155,6 +163,7 @@ Test through AWS Console (Bedrock > Agents > Test):
 2. "Book a ticket for John Doe on train T101 for December 27th, email john@example.com"
 3. "What's the status of booking BK12345?"
 4. "Cancel my booking BK12345"
+5. "**Export my booking BK12345 as PDF**" ← NEW!
 
 ## 📊 Sample Data
 
@@ -164,6 +173,24 @@ The system comes pre-loaded with 5 sample trains:
 - **T103**: Lyon → Paris (22:00, 60 seats)
 - **T104**: Marseille → Paris (06:00, 40 seats)
 - **T105**: Paris → Nice (14:00, 55 seats)
+
+## ✨ Features
+
+### Core Features
+- ✅ Complete REST API with 9 endpoints
+- ✅ Conversational AI booking with Bedrock Agent
+- ✅ In-memory data storage (easily replaceable)
+- ✅ Professional PDF export for bookings
+- ✅ Comprehensive input validation
+- ✅ Error handling and logging
+
+### Technical Features
+- ✅ Serverless architecture (AWS Lambda)
+- ✅ Docker containerization
+- ✅ Infrastructure as Code (AWS CDK)
+- ✅ Latest libraries (Python 3.13, FastAPI 0.115, Claude 3.5 v2)
+- ✅ Unit tested (18 tests)
+- ✅ Auto-generated API documentation
 
 ## 🔐 IAM Permissions
 

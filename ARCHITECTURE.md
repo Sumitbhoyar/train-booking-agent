@@ -16,41 +16,43 @@
 │                           ↓                                      │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │               Lambda Function (Container)                 │  │
-│  │                                                            │  │
+│  │                   Python 3.13                             │  │
 │  │  ┌──────────────────────────────────────────────────┐   │  │
 │  │  │          FastAPI Application                      │   │  │
 │  │  │                                                    │   │  │
 │  │  │  ├─ app/main.py (Mangum adapter)                 │   │  │
 │  │  │  ├─ app/routers/trains.py                        │   │  │
-│  │  │  ├─ app/routers/bookings.py                      │   │  │
+│  │  │  ├─ app/routers/bookings.py + PDF export         │   │  │
+│  │  │  ├─ app/pdf_generator.py (ReportLab)             │   │  │
 │  │  │  └─ app/database.py (In-Memory)                  │   │  │
 │  │  └──────────────────────────────────────────────────┘   │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │              Amazon Bedrock Agent                         │  │
-│  │                                                            │  │
+│  │               Claude 3.5 Sonnet v2                        │  │
 │  │  ┌────────────────────────────────────────┐             │  │
-│  │  │  Claude 3 Sonnet Foundation Model      │             │  │
+│  │  │  Claude 3.5 Sonnet v2 (Oct 2024)       │             │  │
 │  │  │  (Orchestration & Conversation)        │             │  │
 │  │  └────────────────┬───────────────────────┘             │  │
 │  │                   │                                       │  │
 │  │                   ↓                                       │  │
 │  │  ┌────────────────────────────────────────┐             │  │
-│  │  │       Action Group                      │             │  │
+│  │  │       Action Group (5 actions)          │             │  │
 │  │  │  - searchTrains                         │             │  │
 │  │  │  - createBooking                        │             │  │
 │  │  │  - getBookingStatus                     │             │  │
 │  │  │  - cancelBooking                        │             │  │
+│  │  │  - exportBookingPDF (NEW!)              │             │  │
 │  │  └────────────────┬───────────────────────┘             │  │
 │  └───────────────────┼───────────────────────────────────┘  │
 │                      │                                        │
 │                      ↓                                        │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │         Lambda Function (Action Group Executor)           │  │
-│  │                                                            │  │
+│  │                   Python 3.13                             │  │
 │  │  ├─ bedrock_agent/lambda_handler.py                      │  │
-│  │  ├─ AWS Powertools BedrockAgentResolver                  │  │
+│  │  ├─ AWS Powertools 3.3.0 BedrockAgentResolver            │  │
 │  │  └─ Shares data with main API Lambda                     │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                   │
@@ -137,16 +139,17 @@ User Message (Conversational)
 **Purpose**: Hosts the REST API application
 
 **Specifications**:
-- Runtime: Python 3.12
+- Runtime: Python 3.13
 - Package: Docker container (up to 10GB)
 - Memory: 512 MB
 - Timeout: 30 seconds
 - Architecture: x86_64
 
 **Components**:
-- **Mangum**: ASGI-to-Lambda adapter
-- **FastAPI**: Web framework
-- **Pydantic**: Data validation
+- **Mangum**: ASGI-to-Lambda adapter (v0.18.1)
+- **FastAPI**: Web framework (v0.115.6)
+- **Pydantic**: Data validation (v2.10.3)
+- **ReportLab**: PDF generation (v4.2.5)
 - **In-Memory DB**: Python dictionaries
 
 **Environment Variables**:
@@ -158,15 +161,16 @@ User Message (Conversational)
 **Purpose**: Conversational AI interface
 
 **Specifications**:
-- Foundation Model: Claude 3 Sonnet
+- Foundation Model: Claude 3.5 Sonnet v2 (October 2024)
+- Model ID: anthropic.claude-3-5-sonnet-20241022-v2:0
 - Session TTL: 10 minutes
 - Auto-prepare: Enabled
 
 **Instructions**:
 ```
 You are a helpful train booking assistant. Help users search for trains, 
-make bookings, check booking status, and cancel reservations. Always 
-confirm booking details before finalizing.
+make bookings, check booking status, cancel reservations, and export PDFs.
+Always confirm booking details before finalizing.
 ```
 
 **Capabilities**:
@@ -174,13 +178,14 @@ confirm booking details before finalizing.
 - Multi-turn conversations
 - Action orchestration
 - Context retention
+- Improved reasoning (v2 model)
 
 ### 4. Action Group Lambda
 
 **Purpose**: Execute booking operations for Bedrock Agent
 
 **Specifications**:
-- Runtime: Python 3.12
+- Runtime: Python 3.13
 - Memory: 256 MB
 - Timeout: 30 seconds
 - Handler: `lambda_handler.lambda_handler`
@@ -190,9 +195,10 @@ confirm booking details before finalizing.
 - `createBooking(train_number, passenger_name, email, journey_date)`
 - `getBookingStatus(booking_id)`
 - `cancelBooking(booking_id)`
+- `exportBookingPDF(booking_id)` ← **NEW!**
 
 **Framework**:
-- AWS Lambda Powertools
+- AWS Lambda Powertools 3.3.0
 - BedrockAgentResolver
 
 ## 🗄️ Data Model

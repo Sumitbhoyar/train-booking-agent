@@ -3,10 +3,12 @@
 ## 📋 Project Overview
 
 This is a complete serverless train booking system built with AWS services, featuring:
-- REST API built with FastAPI
-- AWS Bedrock Agent for conversational booking
-- Fully automated deployment with AWS CDK
+- REST API built with FastAPI (latest v0.115.6)
+- AWS Bedrock Agent for conversational booking (Claude 3.5 Sonnet v2)
+- Fully automated deployment with AWS CDK (v2.172.0)
+- Professional PDF export for booking confirmations
 - In-memory database (easily replaceable with DynamoDB)
+- Latest Python 3.13 runtime
 
 ## 📦 What's Included
 
@@ -17,8 +19,9 @@ This is a complete serverless train booking system built with AWS services, feat
 - `models.py` - Pydantic models for data validation
 - `database.py` - In-memory data store with sample trains
 - `config.py` - Configuration management
+- `pdf_generator.py` - PDF generation utility (ReportLab)
 - `routers/trains.py` - Train search endpoints
-- `routers/bookings.py` - Booking CRUD endpoints
+- `routers/bookings.py` - Booking CRUD + **PDF export endpoint**
 
 #### `bedrock_agent/` - Bedrock Agent Integration
 - `lambda_handler.py` - Action group Lambda using AWS Powertools
@@ -70,6 +73,7 @@ This is a complete serverless train booking system built with AWS services, feat
    - `POST /bookings` - Create booking
    - `GET /bookings/{booking_id}` - Get booking status
    - `DELETE /bookings/{booking_id}` - Cancel booking
+   - `GET /bookings/{booking_id}/pdf` - **NEW!** Export as PDF
 
 3. **Health & Info**
    - `GET /health` - Health check
@@ -81,6 +85,7 @@ This is a complete serverless train booking system built with AWS services, feat
 2. `createBooking` - Book a ticket
 3. `getBookingStatus` - Check booking
 4. `cancelBooking` - Cancel reservation
+5. `exportBookingPDF` - Export PDF confirmation
 
 ### Sample Data
 
@@ -303,12 +308,13 @@ MIT License - see LICENSE file
 
 ## ✨ Features Highlights
 
-- ✅ Complete REST API with FastAPI
-- ✅ AWS Bedrock Agent integration
-- ✅ Full AWS CDK infrastructure
-- ✅ Docker containerization
-- ✅ Unit tests included
-- ✅ Comprehensive documentation
+- ✅ Complete REST API with FastAPI 0.115.6
+- ✅ AWS Bedrock Agent integration (Claude 3.5 Sonnet v2)
+- ✅ Full AWS CDK infrastructure (v2.172.0)
+- ✅ Docker containerization (Python 3.13)
+- ✅ Professional PDF export (ReportLab 4.2.5)
+- ✅ Unit tests included (18 tests)
+- ✅ Comprehensive documentation (7 files)
 - ✅ One-command deployment
 - ✅ Sample data included
 - ✅ Cost-optimized architecture

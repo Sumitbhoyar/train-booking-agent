@@ -4,7 +4,7 @@
 
 - [ ] AWS Account with admin access
 - [ ] AWS CLI installed and configured (`aws configure`)
-- [ ] Python 3.12+ installed
+- [ ] Python 3.13+ installed (or 3.12+)
 - [ ] Docker installed and running
 - [ ] Node.js 18+ (for AWS CDK)
 
@@ -73,6 +73,9 @@ curl https://<API-URL>/bookings/{booking_id}
 
 # Cancel booking
 curl -X DELETE https://<API-URL>/bookings/{booking_id}
+
+# Export booking as PDF
+curl -O https://<API-URL>/bookings/{booking_id}/pdf
 ```
 
 ### 2. Test Bedrock Agent
@@ -87,6 +90,7 @@ curl -X DELETE https://<API-URL>/bookings/{booking_id}
 "Book a ticket for Jane Smith on train T101 for December 27, 2025. Email is jane@example.com"
 "What's the status of booking BK12345?" (use actual booking ID)
 "Cancel booking BK12345" (use actual booking ID)
+"Export my booking BK12345 as PDF" (NEW! - Returns download URL)
 ```
 
 ## API Documentation
@@ -156,7 +160,7 @@ cdk bootstrap aws://ACCOUNT-ID/REGION
 For light usage (100 requests/day):
 - Lambda: ~$0.20/month
 - API Gateway: ~$0.10/month
-- Bedrock: ~$1-5/month (varies by usage)
+- Bedrock (Claude 3.5 Sonnet v2): ~$1-5/month (varies by usage)
 - **Total: ~$1-6/month**
 
 ## Next Steps
@@ -164,10 +168,11 @@ For light usage (100 requests/day):
 1. ✅ Deploy the infrastructure
 2. ✅ Test REST API endpoints
 3. ✅ Test Bedrock Agent
-4. 🔄 Customize train data
-5. 🔄 Add more features (payment, notifications)
-6. 🔄 Integrate with real database (DynamoDB)
-7. 🔄 Add authentication (Cognito)
+4. ✅ Try PDF export feature
+5. 🔄 Customize train data
+6. 🔄 Add more features (payment, notifications)
+7. 🔄 Integrate with real database (DynamoDB)
+8. 🔄 Add authentication (Cognito)
 
 ## Support
 
